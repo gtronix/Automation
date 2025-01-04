@@ -33,6 +33,15 @@ def insert_feed_entry(db_name, title, url, description, published_date, send):
     conn.commit()
     conn.close()
 
+# Function to check if a URL already exists in the database
+def url_exists(db_name, url):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+    cursor.execute('SELECT 1 FROM rss_feed WHERE url = ?', (url,))
+    exists = cursor.fetchone() is not None
+    conn.close()
+    return exists
+
 # Read RSS feed URLs from a text file
 with open('rss_feeds.txt', 'r') as file:
     rss_urls = file.readlines()
@@ -67,8 +76,13 @@ for rss_url in rss_urls:
             # Use the first paragraph as the description if found, otherwise use the full description
             description = first_paragraph.get_text() if first_paragraph else entry.description
         else:
-            description = entry.description
+            # Clean the full description if the base URL does not match
+            soup = BeautifulSoup(entry.description, 'html.parser')
+            description = soup.get_text(strip=True)
 
-        # Insert the feed entry into the database
-        insert_feed_entry(db_name, entry.title, entry.link, description, published_date, 0)  # Assuming 'send' is 0 for new entries
-
+            # Check if the URL already exists in the database
+        if not url_exists(db_name, entry.link):
+            # Insert the feed entry into the database
+            insert_feed_entry(db_name, entry.title, entry.link, description, published_date, 0)  # Assuming 'send' is 0 for new entries
+        else:
+            print(f"URL already exists in the database: {entry.link}")
