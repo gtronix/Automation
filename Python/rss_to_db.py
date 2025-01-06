@@ -1,5 +1,6 @@
 import sqlite3
 import feedparser
+from datetime import datetime
 from bs4 import BeautifulSoup
 
 # Database
@@ -13,9 +14,11 @@ def create_database(db_name):
         CREATE TABLE IF NOT EXISTS rss_feed (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
+            author TEXT,
             url TEXT,
             description TEXT,
             published_date TEXT,
+            tags TEXT,
             send INTEGER
         )
     ''')
@@ -23,13 +26,13 @@ def create_database(db_name):
     conn.close()
 
 # Function to insert feed entry into the database
-def insert_feed_entry(db_name, title, url, description, published_date, send):
+def insert_feed_entry(db_name, title, author, url, description, published_date, tags, send):
     conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO rss_feed (title, url, description, published_date, send)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (title, url, description, published_date, send))
+        INSERT INTO rss_feed (title, author, url, description, published_date, tags, send)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (title, author, url, description, published_date, tags, send))
     conn.commit()
     conn.close()
 
@@ -42,6 +45,11 @@ def url_exists(db_name, url):
     conn.close()
     return exists
 
+# Function to check if any keywords are in the description and return matching tags
+def extract_tags(title, description, keywords):
+    found_tags = [keyword for keyword in keywords if keyword.lower() in title.lower() or keyword.lower() in description.lower()]
+    return ', '.join(found_tags) if found_tags else None
+
 # Read RSS feed URLs from a text file
 with open('rss_feeds.txt', 'r') as file:
     rss_urls = file.readlines()
@@ -51,6 +59,10 @@ rss_urls = [url.strip() for url in rss_urls]
 
 # Specify the base URL you want to check against
 base_url = 'https://pivot.quebec/'  # Replace with the specific base URL
+
+# Read RSS feed keywords from a text file
+with open('tags.txt', 'r') as file:
+    keywords = [line.strip() for line in file.readlines()]
 
 # Create the database and table
 create_database(db_name)
@@ -63,7 +75,17 @@ for rss_url in rss_urls:
     for entry in feed.entries:
         # Get the author and published date, with defaults if not present
         author = entry.get('author', 'Unknown Author')
-        published_date = entry.get('published', 'No Date Provided')
+        
+        # Modify published date
+        date_string = entry.get('published', None )
+
+        if date_string:
+            date_without_timezone = date_string.rsplit(' ', 1)[0]
+            parsed_date = datetime.strptime(date_without_timezone, "%a, %d %b %Y %H:%M:%S")
+            published_date = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            published_date = 'No Date Provided'
+
 
         # Check if the entry link starts with the specific base URL
         if entry.link.startswith(base_url):
@@ -80,9 +102,13 @@ for rss_url in rss_urls:
             soup = BeautifulSoup(entry.description, 'html.parser')
             description = soup.get_text(strip=True)
 
-            # Check if the URL already exists in the database
+        title = entry.title
+
+        # Extract tags based on keywords
+        tags = extract_tags(title, description, keywords)
+
+        # Check if the URL already exists in the database
         if not url_exists(db_name, entry.link):
             # Insert the feed entry into the database
-            insert_feed_entry(db_name, entry.title, entry.link, description, published_date, 0)  # Assuming 'send' is 0 for new entries
-        else:
-            print(f"URL already exists in the database: {entry.link}")
+            insert_feed_entry(db_name, title, author, entry.link, description, published_date, tags, 0)  # Assuming 'send' is 0 for new entries
+            print(f"New entry in the database: {entry.title} {tags}")
