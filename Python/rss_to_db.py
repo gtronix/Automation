@@ -157,7 +157,7 @@ for rss_url in rss_urls:
         title = entry.title
 
         # Extract tags based on keywords
-        tags = extract_tags(title, description, keywords)
+        tags = extract_tags(title, raw_description, keywords)
 
         if tags:
             # Check if the URL already exists in the database
