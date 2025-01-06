@@ -100,18 +100,18 @@ def extract_tags(title, description, keywords):
     return ', '.join(found_tags) if found_tags else None
 
 # Read RSS feed URLs from a text file
-with open('rss_feeds.txt', 'r') as file:
+with open('./rss_feeds.txt', 'r') as file:
     rss_urls = file.readlines()
 
 # Strip whitespace characters like `\n` at the end of each line
 rss_urls = [url.strip() for url in rss_urls]
 
 # Specify the base URL you want to check against
-with open('special_urls.txt', 'r') as file:
+with open('./special_urls.txt', 'r') as file:
     base_url = [line.strip() for line in file.readlines()]
 
 # Read RSS feed keywords from a text file
-with open('tags.txt', 'r') as file:
+with open('./tags.txt', 'r') as file:
     keywords = [line.strip() for line in file.readlines()]
 
 # Create the database and table
