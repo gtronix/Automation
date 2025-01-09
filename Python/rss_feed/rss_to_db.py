@@ -163,7 +163,7 @@ for rss_url in rss_urls:
             # Check if the URL already exists in the database
             if url_exists(db_name, entry.link):
                 # Insert the feed entry into the database
-                update_feed_entry(db_name, title, author, entry.link, description, published_date, tags)  # Assuming 'send' is 0 for new entries
+                update_feed_entry(db_name, title, author, entry.link, description, published_date, tags)  
                 print(f"Update entry in the database: {entry.title} {tags}")
             if not url_exists(db_name, entry.link):
                 # Insert the feed entry into the database
